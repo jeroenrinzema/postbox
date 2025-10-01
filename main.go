@@ -142,13 +142,15 @@ func NewBoundary(writer io.Writer, mime string) Boundary {
 }
 
 // Mark appends the boundary identifier to the set io.Writer
-func (b *Boundary) Mark() {
-	b.writer.Write([]byte("--" + b.Identifier + CRLF))
+func (b *Boundary) Mark() (err error) {
+	_, err = b.writer.Write([]byte("--" + b.Identifier + CRLF))
+	return err
 }
 
 // End marks the boundary as ended
-func (b *Boundary) End() {
-	b.writer.Write([]byte("--" + b.Identifier + "--" + CRLF + CRLF))
+func (b *Boundary) End() (err error) {
+	_, err = b.writer.Write([]byte("--" + b.Identifier + "--" + CRLF + CRLF))
+	return err
 }
 
 // Envelope is responsible for the generation of RFC 822-style emails.
@@ -172,7 +174,7 @@ type Envelope struct {
 }
 
 // Write writes the smtp message as multiform to the given io.Writer
-func (e *Envelope) Write(writer io.WriteCloser) {
+func (e *Envelope) Write(writer io.WriteCloser) (err error) {
 	if e.Date.IsZero() {
 		e.Date = time.Now()
 	}
@@ -187,25 +189,50 @@ func (e *Envelope) Write(writer io.WriteCloser) {
 		"Mime-Version": {"1.0"},
 	}
 
-	headers.Write(writer)
+	err = headers.Write(writer)
+	if err != nil {
+		return err
+	}
 
 	mixed := NewBoundary(writer, "multipart/mixed")
-	mixed.Mark()
+	err = mixed.Mark()
+	if err != nil {
+		return err
+	}
 
 	related := NewBoundary(writer, "multipart/related")
-	related.Mark()
+	err = related.Mark()
+	if err != nil {
+		return err
+	}
 
 	alternative := NewBoundary(writer, "multipart/alternative")
 
 	for _, part := range e.Parts {
-		alternative.Mark()
+		err = alternative.Mark()
+		if err != nil {
+			return err
+		}
+
 		part.Write(writer, e.Charset)
 	}
 
-	alternative.End()
-	related.End()
-	mixed.End()
-	writer.Close()
+	err = alternative.End()
+	if err != nil {
+		return err
+	}
+
+	err = related.End()
+	if err != nil {
+		return err
+	}
+
+	err = mixed.End()
+	if err != nil {
+		return err
+	}
+
+	return writer.Close()
 }
 
 // RandomBoundary generates a new random boundary
