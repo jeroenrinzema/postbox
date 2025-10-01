@@ -85,28 +85,49 @@ type Part struct {
 }
 
 // Write writes the part to the given io writer
-func (p *Part) Write(writer io.Writer, charset string) {
+func (p *Part) Write(writer io.Writer, charset string) (err error) {
 	headers := Headers{
 		"Content-Type":              {p.ContentType, "charset=" + charset},
 		"Content-Transfer-Encoding": {string(p.Encoding)},
 	}
 
-	headers.Write(writer)
-	writer.Write([]byte(CRLF))
+	err = headers.Write(writer)
+	if err != nil {
+		return err
+	}
+
+	_, err = writer.Write([]byte(CRLF))
+	if err != nil {
+		return err
+	}
 
 	switch p.Encoding {
 	case QuotedPrintable:
 		reader := quotedprintable.NewReader(p.Reader)
-		io.Copy(writer, reader)
+		_, err = io.Copy(writer, reader)
+		if err != nil {
+			return err
+		}
 	case Base64:
 		encoder := base64.NewEncoder(base64.StdEncoding, writer)
-		io.Copy(encoder, p.Reader)
-		encoder.Close()
+		_, err = io.Copy(encoder, p.Reader)
+		if err != nil {
+			return err
+		}
+
+		err = encoder.Close()
+		if err != nil {
+			return err
+		}
 	default:
-		io.Copy(writer, p.Reader)
+		_, err = io.Copy(writer, p.Reader)
+		if err != nil {
+			return err
+		}
 	}
 
-	writer.Write([]byte(CRLF))
+	_, err = writer.Write([]byte(CRLF))
+	return err
 }
 
 // File represents a multiform file
@@ -214,7 +235,10 @@ func (e *Envelope) Write(writer io.WriteCloser) (err error) {
 			return err
 		}
 
-		part.Write(writer, e.Charset)
+		err = part.Write(writer, e.Charset)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = alternative.End()
