@@ -1,3 +1,3 @@
 module github.com/jeroenrinzema/postbox
 
-go 1.16
+go 1.25
