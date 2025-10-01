@@ -1,5 +1,8 @@
 # Postbox 📬
+
 A small library for constructing RFC 2822 style multipart messages. This library could be used to interact with a SMTP server to send mail.
+
+> 🚧 This project is a experiment and should be used with caution in production
 
 ```go
 package main
