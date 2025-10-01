@@ -40,23 +40,41 @@ type ContentType string
 type Headers map[string][]string
 
 // Write writes the headers to the given io.Writer
-func (h Headers) Write(writer io.Writer) {
+func (h Headers) Write(writer io.Writer) (err error) {
 	for property, values := range h {
-		writer.Write([]byte(property))
+		_, err = writer.Write([]byte(property))
+		if err != nil {
+			return err
+		}
 
 		if len(values) == 0 {
-			writer.Write([]byte(":" + CRLF))
+			_, err = writer.Write([]byte(":" + CRLF))
+			if err != nil {
+				return err
+			}
 			continue
 		}
 
-		writer.Write([]byte(": "))
+		_, err = writer.Write([]byte(": "))
+		if err != nil {
+			return err
+		}
 
 		values := strings.Join(values, "; ")
 		reader := strings.NewReader(values)
 
-		io.Copy(writer, reader)
-		writer.Write([]byte(CRLF))
+		_, err = io.Copy(writer, reader)
+		if err != nil {
+			return err
+		}
+
+		_, err = writer.Write([]byte(CRLF))
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 // Part represents a multiform part
